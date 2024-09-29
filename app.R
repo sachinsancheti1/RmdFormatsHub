@@ -6,7 +6,7 @@ library(zip)  # New package to control zipping behavior
 library(fs)
 
 ui <- fluidPage(
-  useShinyjs(),  # For error handling and status feedback
+  useShinyjs(),  # For progress messages and visibility control
   titlePanel("R Markdown to Multiple Formats"),
   sidebarLayout(
     sidebarPanel(
@@ -38,12 +38,25 @@ ui <- fluidPage(
     ),
     mainPanel(
       aceEditor("markdownEditor", mode = "rmarkdown", height = "400px"),  # Live editor for editing RMarkdown
+      
+      # Log of console messages
+      tags$pre(id = "consoleLog", style = "background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px; max-height: 300px; overflow-y: scroll;"),
+      
+      # Progress notification
+      hidden(div(id = "processingNotification", h4("Processing... Please wait"))),
+      
       textOutput("analytics")  # Display analytics
     )
   )
 )
 
 server <- function(input, output, session) {
+  useShinyjs()  # Initialize shinyjs for hiding/showing elements
+  
+  # Function to update the log
+  updateLog <- function(message) {
+    shinyjs::html(id = "consoleLog", html = paste0(message, "\n"), add = TRUE)
+  }
   
   # Variable to store the updated Rmd content
   updated_rmd <- reactiveVal(NULL)
@@ -107,6 +120,12 @@ server <- function(input, output, session) {
       return()
     }
     
+    # Show the progress notification and clear the log
+    shinyjs::show("processingNotification")
+    shinyjs::html(id = "consoleLog", html = "", add = FALSE)  # Clear previous logs
+    
+    updateLog("Conversion started...")
+    
     output$status <- renderText("Converting...")
     
     output_files <- list()  # Initialize list for storing file paths
@@ -114,46 +133,50 @@ server <- function(input, output, session) {
     # Convert to Beamer Presentation with theme
     if ("beamer" %in% formats) {
       tryCatch({
-        print("Rendering Beamer presentation...")
+        updateLog("Rendering Beamer presentation...")
         output_file_beamer <- rmarkdown::render(temp_rmd, 
                                                 output_format = beamer_presentation(theme = input$theme, font_size = input$fontsize, keep_tex = TRUE),
                                                 output_dir = temp_dir)  # Save directly to the temp directory
         output_files$beamer <- output_file_beamer
+        updateLog(paste("Beamer file generated:", output_file_beamer))
       }, error = function(e) {
-        output$status <- renderText(paste("Error converting to Beamer: ", e$message))
+        updateLog(paste("Error converting to Beamer:", e$message))
       })
     }
     
     # Convert to knitr PDF
     if ("knitr" %in% formats) {
       tryCatch({
-        print("Rendering knitr PDF...")
+        updateLog("Rendering Knitr PDF...")
         output_file_knitr <- rmarkdown::render(temp_rmd, output_format = "pdf_document", output_dir = temp_dir)
         output_files$knitr <- output_file_knitr
+        updateLog(paste("Knitr PDF file generated:", output_file_knitr))
       }, error = function(e) {
-        output$status <- renderText(paste("Error converting to Knitr PDF: ", e$message))
+        updateLog(paste("Error converting to Knitr PDF:", e$message))
       })
     }
     
     # Convert to R HTML presentation (ioslides)
     if ("html" %in% formats) {
       tryCatch({
-        print("Rendering HTML presentation...")
+        updateLog("Rendering HTML presentation...")
         output_file_html <- rmarkdown::render(temp_rmd, output_format = "ioslides_presentation", output_dir = temp_dir)
         output_files$html <- output_file_html
+        updateLog(paste("HTML file generated:", output_file_html))
       }, error = function(e) {
-        output$status <- renderText(paste("Error converting to HTML: ", e$message))
+        updateLog(paste("Error converting to HTML:", e$message))
       })
     }
     
     # Convert to Word Document
     if ("word" %in% formats) {
       tryCatch({
-        print("Rendering Word document...")
+        updateLog("Rendering Word document...")
         output_file_word <- rmarkdown::render(temp_rmd, output_format = "word_document", output_dir = temp_dir)
         output_files$word <- output_file_word
+        updateLog(paste("Word document generated:", output_file_word))
       }, error = function(e) {
-        output$status <- renderText(paste("Error converting to Word Document: ", e$message))
+        updateLog(paste("Error converting to Word Document:", e$message))
       })
     }
     
@@ -172,7 +195,10 @@ server <- function(input, output, session) {
       # Add timestamp to the filename
       timestamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
       
-      # Once done, notify the user
+      updateLog("All conversions completed.")
+      
+      # Once done, notify the user and hide the progress notification
+      shinyjs::hide("processingNotification")
       output$status <- renderText("Conversion completed. Download your files below.")
       
       # Create download handler for converted files with a timestamped zip filename
@@ -184,6 +210,7 @@ server <- function(input, output, session) {
         }
       )
     } else {
+      shinyjs::hide("processingNotification")
       output$status <- renderText("No valid files were generated. Please try again.")
     }
     
