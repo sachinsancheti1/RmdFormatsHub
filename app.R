@@ -1,10 +1,19 @@
 library(shiny)
-library(rmarkdown)
-library(shinyAce)
-library(shinyjs)
-library(zip)
-library(fs)
-library(yaml)
+# List of required libraries
+required_packages <- c("rmarkdown", "shinyAce", "shinyjs", "zip", "fs", "yaml")
+
+# Function to check and install missing libraries
+install_if_missing <- function(packages) {
+  for (pkg in packages) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      install.packages(pkg)
+    }
+    library(pkg, character.only = TRUE)
+  }
+}
+
+# Install and load required packages
+install_if_missing(required_packages)
 
 ui <- fluidPage(
   tags$head(
