@@ -2,6 +2,8 @@ library(shiny)
 library(rmarkdown)
 library(shinyAce)
 library(shinyjs)
+library(zip)  # New package to control zipping behavior
+library(fs)
 
 ui <- fluidPage(
   useShinyjs(),  # For error handling and status feedback
@@ -30,6 +32,7 @@ ui <- fluidPage(
                                      "Word Document" = "word")),
       
       actionButton("convert", "Convert"),
+      downloadButton("downloadRmd", "Download Updated Rmd"),
       textOutput("status"),
       downloadButton("download", "Download Converted Files")
     ),
@@ -42,11 +45,18 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
+  # Variable to store the updated Rmd content
+  updated_rmd <- reactiveVal(NULL)
+  
+  # Variable to store the original file name
+  original_file_name <- reactiveVal("updated_file.Rmd")
+  
   # Show the uploaded file name for confirmation
   output$fileName <- renderText({
     if (is.null(input$file)) {
       return("No file selected")
     } else {
+      original_file_name(basename(input$file$name))  # Store the original file name
       return(paste("Selected file:", input$file$name))
     }
   })
@@ -60,19 +70,38 @@ server <- function(input, output, session) {
     
     # Update aceEditor with the file content
     updateAceEditor(session, "markdownEditor", value = paste(file_content, collapse = "\n"))
+    
+    # Store the initial Rmd content in reactive value
+    updated_rmd(paste(file_content, collapse = "\n"))
   })
   
+  # Capture the content when the user edits the file in the live editor
+  observe({
+    updated_rmd(input$markdownEditor)  # Capture updates from aceEditor
+  })
+  
+  # Download the updated Rmd file with the original or improved name
+  output$downloadRmd <- downloadHandler(
+    filename = function() {
+      paste0("updated_", original_file_name())  # Use a modified version of the original file name
+    },
+    content = function(file) {
+      writeLines(updated_rmd(), file)
+    }
+  )
+  
   observeEvent(input$convert, {
-    req(input$file)  # Ensure a file is uploaded
-    file_path <- input$file$datapath
+    req(updated_rmd())  # Ensure there's content to convert
+    
+    # Save the updated content to a temporary file for conversion
+    temp_rmd <- tempfile(fileext = ".Rmd")
+    writeLines(updated_rmd(), temp_rmd)
+    
     formats <- input$formats
+    temp_dir <- tempfile()  # Create a temporary directory for the converted files
+    dir_create(temp_dir)    # Ensure the directory exists
     
     # Basic error handling and user feedback
-    if (is.null(input$file)) {
-      output$status <- renderText("Please upload a valid R Markdown file.")
-      return()
-    }
-    
     if (length(formats) == 0) {
       output$status <- renderText("Please select at least one output format.")
       return()
@@ -83,19 +112,15 @@ server <- function(input, output, session) {
     output_files <- list()  # Initialize list for storing file paths
     
     # Convert to Beamer Presentation with theme
-
     if ("beamer" %in% formats) {
       tryCatch({
         print("Rendering Beamer presentation...")
-        output_file_beamer <- rmarkdown::render(file_path, 
-                                                output_format = beamer_presentation(theme = input$theme, font_size = input$fontsize, keep_tex = TRUE))
-        print(paste("Beamer file generated at:", output_file_beamer))
+        output_file_beamer <- rmarkdown::render(temp_rmd, 
+                                                output_format = beamer_presentation(theme = input$theme, font_size = input$fontsize, keep_tex = TRUE),
+                                                output_dir = temp_dir)  # Save directly to the temp directory
         output_files$beamer <- output_file_beamer
       }, error = function(e) {
-        # Capture LaTeX-specific errors
-        output$status <- renderText(paste("Error converting to Beamer: ", 
-                                          "Ensure LaTeX (TinyTeX) is installed and working.", 
-                                          e$message))
+        output$status <- renderText(paste("Error converting to Beamer: ", e$message))
       })
     }
     
@@ -103,8 +128,7 @@ server <- function(input, output, session) {
     if ("knitr" %in% formats) {
       tryCatch({
         print("Rendering knitr PDF...")
-        output_file_knitr <- rmarkdown::render(file_path, output_format = "pdf_document")
-        print(paste("Knitr PDF file generated at:", output_file_knitr))
+        output_file_knitr <- rmarkdown::render(temp_rmd, output_format = "pdf_document", output_dir = temp_dir)
         output_files$knitr <- output_file_knitr
       }, error = function(e) {
         output$status <- renderText(paste("Error converting to Knitr PDF: ", e$message))
@@ -115,8 +139,7 @@ server <- function(input, output, session) {
     if ("html" %in% formats) {
       tryCatch({
         print("Rendering HTML presentation...")
-        output_file_html <- rmarkdown::render(file_path, output_format = "ioslides_presentation")
-        print(paste("HTML file generated at:", output_file_html))
+        output_file_html <- rmarkdown::render(temp_rmd, output_format = "ioslides_presentation", output_dir = temp_dir)
         output_files$html <- output_file_html
       }, error = function(e) {
         output$status <- renderText(paste("Error converting to HTML: ", e$message))
@@ -127,31 +150,37 @@ server <- function(input, output, session) {
     if ("word" %in% formats) {
       tryCatch({
         print("Rendering Word document...")
-        output_file_word <- rmarkdown::render(file_path, output_format = "word_document")
-        print(paste("Word file generated at:", output_file_word))
+        output_file_word <- rmarkdown::render(temp_rmd, output_format = "word_document", output_dir = temp_dir)
         output_files$word <- output_file_word
       }, error = function(e) {
         output$status <- renderText(paste("Error converting to Word Document: ", e$message))
       })
     }
     
-    # Debugging: Print the generated file paths
-    print("Generated file paths:")
-    print(output_files)
-    
     # Ensure files exist before attempting to zip
     valid_files <- unlist(output_files)
     valid_files <- valid_files[file.exists(valid_files)]  # Only include files that exist
     
     if (length(valid_files) > 0) {
+      # Copy files to a flat temporary directory for zipping
+      flat_dir <- tempfile()
+      dir_create(flat_dir)
+      
+      # Copy the files to the flat directory with their base names only
+      file_copy(valid_files, file.path(flat_dir, basename(valid_files)), overwrite = TRUE)
+      
+      # Add timestamp to the filename
+      timestamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
+      
       # Once done, notify the user
       output$status <- renderText("Conversion completed. Download your files below.")
       
-      # Create download handler for converted files
+      # Create download handler for converted files with a timestamped zip filename
       output$download <- downloadHandler(
-        filename = function() { "converted_files.zip" },
+        filename = function() { paste0("converted_", original_file_name(), "_", timestamp, ".zip") },  # Include timestamp
         content = function(file) {
-          zip(file, files = valid_files)
+          # Use zip::zipr to zip without deep folder structures
+          zipr(file, files = dir_ls(flat_dir, recurse = FALSE), root = flat_dir)
         }
       )
     } else {
