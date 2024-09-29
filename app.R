@@ -67,42 +67,43 @@ ui <- fluidPage(
     sidebarPanel(
       fileInput("file", "Upload R Markdown File (.Rmd)", accept = ".Rmd"),
       
-      # Sidebar to configure themes and formats
-      h4("Themes and Formats from YAML"),
+      # Beamer Presentation Options
+      h4("Beamer Presentation Options"),
+      wellPanel(
+        # Beamer theme selection with color themes, slide themes, and font themes
+        selectInput("theme_beamer", "Beamer Theme", 
+                    choices = c("default", "AnnArbor", "Antibes", "Bergen", "Berkeley", "Berlin")),
+        
+        selectInput("color_beamer", "Beamer Color Theme",
+                    choices = c("default", "albatross", "beetle", "crane", "dolphin")),
+        
+        numericInput("slide_level", "Slide Level", value = 2, min = 1),
+        
+        selectInput("font_beamer", "Beamer Font Theme",
+                    choices = c("default", "serif", "structurebold", "structureitalicserif"))
+      ),
       
-      # Beamer theme selection with color themes
-      selectInput("theme_beamer", "Beamer Theme", 
-                  choices = c("default", "AnnArbor", "Antibes", "Bergen", "Berkeley", "Berlin", 
-                              "Boadilla", "CambridgeUS", "Copenhagen", "Darmstadt", "Dresden", 
-                              "Frankfurt", "Goettingen", "Hannover", "Ilmenau", "JuanLesPins", 
-                              "Luebeck", "Madrid", "Malmoe", "Marburg", "Montpellier", 
-                              "PaloAlto", "Pittsburgh", "Rochester", "Singapore", "Szeged", 
-                              "Warsaw")),
+      # PDF Document Options
+      h4("PDF Document Options"),
+      wellPanel(
+        selectInput("theme_pdf", "PDF Theme", choices = c("default", "article", "report", "book", "memoir"))
+      ),
       
-      selectInput("color_beamer", "Beamer Color Theme",
-                  choices = c("default", "albatross", "beetle", "crane", "dolphin", "fly", 
-                              "seagull", "whale", "wolverine")),
+      # HTML Presentation Options
+      h4("HTML Presentation Options"),
+      wellPanel(
+        selectInput("theme_html", "HTML Theme", choices = c("default"))
+      ),
       
-      # Add slide level input (numeric)
-      numericInput("slide_level", "Slide Level", value = 2, min = 1),
+      # Word Document Options
+      h4("Word Document Options"),
+      wellPanel(
+        selectInput("theme_word", "Word Theme", choices = c("default"))
+      ),
       
-      selectInput("font_beamer", "Beamer Font Theme",
-                  choices = c("default", "serif", "structurebold", "structureitalicserif")),
-      
-      
-      # PDF theme selection (LaTeX classes)
-      selectInput("theme_pdf", "PDF Theme", 
-                  choices = c("default")),
-      
-      # HTML theme selection (fixed parentheses)
-      selectInput("theme_html", "HTML Theme", 
-                  choices = c("default")),
-      
-      # Word theme selection
-      selectInput("theme_word", "Word Theme", 
-                  choices = c("default")),
-      
-      checkboxGroupInput("formats", "Select Output Formats", 
+      # Output Formats
+      h4("Select Output Formats"),
+      checkboxGroupInput("formats", "Choose output formats:", 
                          choices = c("Beamer PDF" = "beamer",
                                      "Knitr PDF" = "knitr",
                                      "R HTML Presentation" = "html",
