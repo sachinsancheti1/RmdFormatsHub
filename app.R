@@ -2,29 +2,26 @@ library(shiny)
 library(rmarkdown)
 library(shinyAce)
 library(shinyjs)
-library(zip)  # New package to control zipping behavior
+library(zip)
 library(fs)
+library(yaml)  # To parse YAML frontmatter
 
 ui <- fluidPage(
-  useShinyjs(),  # For progress messages and visibility control
+  useShinyjs(),
   titlePanel("R Markdown to Multiple Formats"),
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Upload R Markdown File (.Rmd)", accept = ".Rmd"),
       
-      # Display the uploaded file name for feedback
-      textOutput("fileName"),
+      # Sidebar to configure themes and formats
+      h4("Themes and Formats from YAML"),
       
-      # Theme picker (Beamer themes)
-      selectInput("theme", "Select Beamer Theme",
-                  choices = c("default", "AnnArbor", "Antibes", "Bergen", 
-                              "Berkeley", "Berlin", "Boadilla", "CambridgeUS")),
+      # Theme pickers for Beamer, PDF, HTML, Word
+      selectInput("theme_beamer", "Beamer Theme", choices = c("default", "AnnArbor", "Antibes", "Bergen")),
+      selectInput("theme_pdf", "PDF Theme", choices = c("default")),
+      selectInput("theme_html", "HTML Theme", choices = c("default")),
+      selectInput("theme_word", "Word Theme", choices = c("default")),
       
-      # Advanced formatting options
-      numericInput("fontsize", "Font Size", 11),
-      numericInput("margin", "Margin (cm)", 2),
-      
-      # Format selection
       checkboxGroupInput("formats", "Select Output Formats", 
                          choices = c("Beamer PDF" = "beamer",
                                      "Knitr PDF" = "knitr",
@@ -37,7 +34,13 @@ ui <- fluidPage(
       downloadButton("download", "Download Converted Files")
     ),
     mainPanel(
-      aceEditor("markdownEditor", mode = "rmarkdown", height = "400px"),  # Live editor for editing RMarkdown
+      # Frontmatter editor
+      h4("Frontmatter"),
+      aceEditor("frontmatterEditor", mode = "yaml", height = "200px"),
+      
+      # Content editor
+      h4("Body Content"),
+      aceEditor("bodyEditor", mode = "rmarkdown", height = "400px"),
       
       # Log of console messages
       tags$pre(id = "consoleLog", style = "background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px; max-height: 300px; overflow-y: scroll;"),
@@ -45,13 +48,13 @@ ui <- fluidPage(
       # Progress notification
       hidden(div(id = "processingNotification", h4("Processing... Please wait"))),
       
-      textOutput("analytics")  # Display analytics
+      textOutput("analytics")
     )
   )
 )
 
 server <- function(input, output, session) {
-  useShinyjs()  # Initialize shinyjs for hiding/showing elements
+  useShinyjs()
   
   # Function to update the log
   updateLog <- function(message) {
@@ -64,33 +67,67 @@ server <- function(input, output, session) {
   # Variable to store the original file name
   original_file_name <- reactiveVal("updated_file.Rmd")
   
-  # Show the uploaded file name for confirmation
-  output$fileName <- renderText({
-    if (is.null(input$file)) {
-      return("No file selected")
-    } else {
-      original_file_name(basename(input$file$name))  # Store the original file name
-      return(paste("Selected file:", input$file$name))
-    }
-  })
-  
-  # Read the uploaded file and display it in the live editor
+  # Parse frontmatter and body content separately
   observeEvent(input$file, {
     req(input$file)
     
     # Read the contents of the uploaded RMarkdown file
     file_content <- readLines(input$file$datapath, warn = FALSE)
+    rmd_content <- paste(file_content, collapse = "\n")
     
-    # Update aceEditor with the file content
-    updateAceEditor(session, "markdownEditor", value = paste(file_content, collapse = "\n"))
+    # Split the frontmatter and body content
+    frontmatter <- ""
+    body <- rmd_content
+    if (grepl("---", rmd_content)) {
+      parts <- unlist(strsplit(rmd_content, "---\n", fixed = TRUE))
+      if (length(parts) >= 3) {
+        frontmatter <- paste(parts[2], collapse = "\n")
+        body <- paste(parts[3:length(parts)], collapse = "---\n")
+      }
+    }
     
-    # Store the initial Rmd content in reactive value
-    updated_rmd(paste(file_content, collapse = "\n"))
+    # Parse the frontmatter as YAML
+    parsed_yaml <- tryCatch({
+      yaml.load(frontmatter)
+    }, error = function(e) {
+      updateLog("Error parsing YAML frontmatter.")
+      return(NULL)
+    })
+    
+    # If YAML is valid, update themes and formats in the sidebar
+    if (!is.null(parsed_yaml) && !is.null(parsed_yaml$output)) {
+      output_settings <- parsed_yaml$output
+      if (!is.null(output_settings$beamer_presentation)) {
+        updateSelectInput(session, "theme_beamer", selected = "default")
+        updateCheckboxGroupInput(session, "formats", selected = c("beamer"))
+      }
+      if (!is.null(output_settings$pdf_document)) {
+        updateSelectInput(session, "theme_pdf", selected = "default")
+        updateCheckboxGroupInput(session, "formats", selected = c("knitr"))
+      }
+      if (!is.null(output_settings$ioslides_presentation)) {
+        updateSelectInput(session, "theme_html", selected = "default")
+        updateCheckboxGroupInput(session, "formats", selected = c("html"))
+      }
+      if (!is.null(output_settings$word_document)) {
+        updateSelectInput(session, "theme_word", selected = "default")
+        updateCheckboxGroupInput(session, "formats", selected = c("word"))
+      }
+    }
+    
+    # Update the Ace editors
+    updateAceEditor(session, "frontmatterEditor", value = frontmatter)
+    updateAceEditor(session, "bodyEditor", value = body)
+    
+    # Store the updated Rmd content for further use
+    updated_rmd(rmd_content)
   })
   
-  # Capture the content when the user edits the file in the live editor
+  # Capture content updates from the frontmatter and body editors
   observe({
-    updated_rmd(input$markdownEditor)  # Capture updates from aceEditor
+    frontmatter <- input$frontmatterEditor
+    body <- input$bodyEditor
+    updated_rmd(paste0("---\n", frontmatter, "---\n", body))
   })
   
   # Download the updated Rmd file with the original or improved name
@@ -103,6 +140,7 @@ server <- function(input, output, session) {
     }
   )
   
+  # Conversion logic (similar to previous versions)
   observeEvent(input$convert, {
     req(updated_rmd())  # Ensure there's content to convert
     
@@ -135,7 +173,7 @@ server <- function(input, output, session) {
       tryCatch({
         updateLog("Rendering Beamer presentation...")
         output_file_beamer <- rmarkdown::render(temp_rmd, 
-                                                output_format = beamer_presentation(theme = input$theme, font_size = input$fontsize, keep_tex = TRUE),
+                                                output_format = beamer_presentation(theme = input$theme_beamer, font_size = input$fontsize, keep_tex = TRUE),
                                                 output_dir = temp_dir)  # Save directly to the temp directory
         output_files$beamer <- output_file_beamer
         updateLog(paste("Beamer file generated:", output_file_beamer))
@@ -203,7 +241,7 @@ server <- function(input, output, session) {
       
       # Create download handler for converted files with a timestamped zip filename
       output$download <- downloadHandler(
-        filename = function() { paste0("converted_", original_file_name(), "_", timestamp, ".zip") },  # Include timestamp
+        filename = function() { paste0("converted_", original_file_name(), "_", timestamp, ".zip") },
         content = function(file) {
           # Use zip::zipr to zip without deep folder structures
           zipr(file, files = dir_ls(flat_dir, recurse = FALSE), root = flat_dir)
@@ -213,13 +251,6 @@ server <- function(input, output, session) {
       shinyjs::hide("processingNotification")
       output$status <- renderText("No valid files were generated. Please try again.")
     }
-    
-    # Analytics tracking (simple counts for now)
-    output$analytics <- renderText({
-      paste("Converted file formats:", paste(formats, collapse = ", "), 
-            "\nFont size:", input$fontsize, 
-            "\nMargin size:", input$margin, "cm")
-    })
   })
 }
 
