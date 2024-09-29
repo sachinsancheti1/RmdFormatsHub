@@ -166,7 +166,7 @@ server <- function(input, output, session) {
         }
         # Update Beamer theme and color theme
         parsed_yaml$output$beamer_presentation$theme <- input$theme_beamer
-        parsed_yaml$output$beamer_presentation$color_theme <- input$color_beamer
+        parsed_yaml$output$beamer_presentation$colortheme <- input$color_beamer
       }
       
       ### PDF Document ###
@@ -349,7 +349,7 @@ server <- function(input, output, session) {
       tryCatch({
         updateLog("Rendering Beamer presentation...")
         output_file_beamer <- rmarkdown::render(temp_rmd, 
-                                                output_format = beamer_presentation(theme = input$theme_beamer, color_theme = input$color_beamer, font_size = input$fontsize, keep_tex = TRUE),
+                                                output_format = beamer_presentation(theme = input$theme_beamer, colortheme = input$color_beamer, keep_tex = TRUE),
                                                 output_dir = temp_dir)  # Save directly to the temp directory
         output_files$beamer <- output_file_beamer
         updateLog(paste("Beamer file generated:", output_file_beamer))
