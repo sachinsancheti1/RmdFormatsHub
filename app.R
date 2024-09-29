@@ -7,6 +7,60 @@ library(fs)
 library(yaml)
 
 ui <- fluidPage(
+  tags$head(
+    # Include Google Fonts and custom CSS
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap"),
+    
+    # Inline CSS for customizing the UI appearance
+    tags$style(HTML("
+      body {
+        font-family: 'Noto Sans', sans-serif;
+        background-color: #f9f3eb; /* light peach shade */
+        color: #4d4d4d;
+      }
+      h1, h4 {
+        color: #4d4d4d;
+      }
+      #file {
+        margin-top: 15px;
+      }
+      .shiny-input-container {
+        margin-bottom: 20px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      #convert {
+        background-color: #e89f71; /* peach shade */
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      #convert:hover {
+        background-color: #d88b5f; /* darker peach */
+      }
+      .btn {
+        border-radius: 8px;
+        background-color: #8fbc8f; /* light green */
+        color: white;
+        padding: 8px 15px;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+      }
+      .btn:hover {
+        background-color: #7aa87a; /* darker green */
+      }
+      .well {
+        background-color: #e3f1e1; /* light green shade */
+        border: 1px solid #c7e1c7;
+      }
+    "))
+  ),
   useShinyjs(),
   titlePanel("R Markdown to Multiple Formats"),
   sidebarLayout(
@@ -35,7 +89,7 @@ ui <- fluidPage(
       
       # HTML theme selection
       selectInput("theme_html", "HTML Theme", 
-                  choices = c("default", "widescreen")),
+                  choices = c("default"),
       
       # Word theme selection
       selectInput("theme_word", "Word Theme", 
