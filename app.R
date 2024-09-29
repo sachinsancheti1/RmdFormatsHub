@@ -1,4 +1,7 @@
 library(shiny)
+# Set CRAN mirror
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
 # List of required libraries
 required_packages <- c("rmarkdown", "shinyAce", "shinyjs", "zip", "fs", "yaml")
 
