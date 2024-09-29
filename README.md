@@ -90,5 +90,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- The R community and authors of the `rmarkdown` package.
-- Contributors and users who provided valuable feedback.
+## Acknowledgments
+
+- Special thanks to the authors and maintainers of the `shiny`, `rmarkdown`, `shinyAce`, `shinyjs`, `yaml`, and other R packages that made this app possible.
+- Thanks to the RStudio team for providing an amazing IDE and platform, and the R community for their continuous contributions to open-source.
+- A big thank you to the contributors and early users who provided valuable feedback to improve this app.
+
