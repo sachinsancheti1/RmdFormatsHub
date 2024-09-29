@@ -85,7 +85,7 @@ ui <- fluidPage(
       
       # PDF theme selection (LaTeX classes)
       selectInput("theme_pdf", "PDF Theme", 
-                  choices = c("default", "article", "report", "book", "memoir")),
+                  choices = c("default")),
       
       # HTML theme selection (fixed parentheses)
       selectInput("theme_html", "HTML Theme", 
