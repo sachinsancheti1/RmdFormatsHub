@@ -83,6 +83,13 @@ ui <- fluidPage(
                   choices = c("default", "albatross", "beetle", "crane", "dolphin", "fly", 
                               "seagull", "whale", "wolverine")),
       
+      # Add slide level input (numeric)
+      numericInput("slide_level", "Slide Level", value = 2, min = 1),
+      
+      selectInput("font_beamer", "Beamer Font Theme",
+                  choices = c("default", "serif", "structurebold", "structureitalicserif")),
+      
+      
       # PDF theme selection (LaTeX classes)
       selectInput("theme_pdf", "PDF Theme", 
                   choices = c("default")),
@@ -157,16 +164,17 @@ server <- function(input, output, session) {
       
       ### Beamer presentation ###
       # If Beamer theme is "default", use simple atomic format
+      ### Beamer Presentation ###
       if (input$theme_beamer == "default") {
         parsed_yaml$output$beamer_presentation <- "default"
       } else {
-        # If a specific theme is selected, use the list format
         if (!is.list(parsed_yaml$output$beamer_presentation)) {
           parsed_yaml$output$beamer_presentation <- list()
         }
-        # Update Beamer theme and color theme
         parsed_yaml$output$beamer_presentation$theme <- input$theme_beamer
         parsed_yaml$output$beamer_presentation$colortheme <- input$color_beamer
+        parsed_yaml$output$beamer_presentation$slide_level <- input$slide_level
+        parsed_yaml$output$beamer_presentation$fonttheme <- input$font_beamer
       }
       
       ### PDF Document ###
@@ -279,6 +287,7 @@ server <- function(input, output, session) {
   # Listen to theme changes and update frontmatter
   observeEvent(input$theme_beamer, { updateFrontmatter() })
   observeEvent(input$color_beamer, { updateFrontmatter() })
+  observeEvent(input$slide_level, { updateFrontmatter() })
   observeEvent(input$theme_pdf, { updateFrontmatter() })
   observeEvent(input$theme_html, { updateFrontmatter() })
   observeEvent(input$theme_word, { updateFrontmatter() })
@@ -344,12 +353,17 @@ server <- function(input, output, session) {
     
     output_files <- list()  # Initialize list for storing file paths
     
-    # Convert to Beamer Presentation with theme
+    # Convert to Beamer Presentation with theme, colortheme, slidetheme, and fonttheme
     if ("beamer" %in% formats) {
       tryCatch({
         updateLog("Rendering Beamer presentation...")
         output_file_beamer <- rmarkdown::render(temp_rmd, 
-                                                output_format = beamer_presentation(theme = input$theme_beamer, colortheme = input$color_beamer, keep_tex = TRUE),
+                                                output_format = beamer_presentation(
+                                                  theme = input$theme_beamer, 
+                                                  colortheme = input$color_beamer, 
+                                                  slide_level = input$slide_level,
+                                                  fonttheme = input$font_beamer, 
+                                                  keep_tex = TRUE),
                                                 output_dir = temp_dir)  # Save directly to the temp directory
         output_files$beamer <- output_file_beamer
         updateLog(paste("Beamer file generated:", output_file_beamer))
