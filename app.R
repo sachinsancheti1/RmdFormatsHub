@@ -4,7 +4,7 @@ library(shinyAce)
 library(shinyjs)
 library(zip)
 library(fs)
-library(yaml)  # To parse YAML frontmatter
+library(yaml)
 
 ui <- fluidPage(
   useShinyjs(),
@@ -16,11 +16,30 @@ ui <- fluidPage(
       # Sidebar to configure themes and formats
       h4("Themes and Formats from YAML"),
       
-      # Theme pickers for Beamer, PDF, HTML, Word
-      selectInput("theme_beamer", "Beamer Theme", choices = c("default", "AnnArbor", "Antibes", "Bergen")),
-      selectInput("theme_pdf", "PDF Theme", choices = c("default")),
-      selectInput("theme_html", "HTML Theme", choices = c("default")),
-      selectInput("theme_word", "Word Theme", choices = c("default")),
+      # Beamer theme selection with color themes
+      selectInput("theme_beamer", "Beamer Theme", 
+                  choices = c("default", "AnnArbor", "Antibes", "Bergen", "Berkeley", "Berlin", 
+                              "Boadilla", "CambridgeUS", "Copenhagen", "Darmstadt", "Dresden", 
+                              "Frankfurt", "Goettingen", "Hannover", "Ilmenau", "JuanLesPins", 
+                              "Luebeck", "Madrid", "Malmoe", "Marburg", "Montpellier", 
+                              "PaloAlto", "Pittsburgh", "Rochester", "Singapore", "Szeged", 
+                              "Warsaw")),
+      
+      selectInput("color_beamer", "Beamer Color Theme",
+                  choices = c("default", "albatross", "beetle", "crane", "dolphin", "fly", 
+                              "seagull", "whale", "wolverine")),
+      
+      # PDF theme selection (LaTeX classes)
+      selectInput("theme_pdf", "PDF Theme", 
+                  choices = c("default", "article", "report", "book", "memoir")),
+      
+      # HTML theme selection
+      selectInput("theme_html", "HTML Theme", 
+                  choices = c("default", "widescreen")),
+      
+      # Word theme selection
+      selectInput("theme_word", "Word Theme", 
+                  choices = c("default")),
       
       checkboxGroupInput("formats", "Select Output Formats", 
                          choices = c("Beamer PDF" = "beamer",
@@ -61,6 +80,88 @@ server <- function(input, output, session) {
     shinyjs::html(id = "consoleLog", html = paste0(message, "\n"), add = TRUE)
   }
   
+  # Function to update the frontmatter
+  # Function to update the frontmatter, ensuring all themes are present
+  # Function to update the frontmatter, ensuring all themes are present
+  # Function to update the frontmatter, ensuring all themes are present and correctly formatted
+  updateFrontmatter <- function() {
+    frontmatter <- input$frontmatterEditor
+    
+    # Parse the frontmatter as YAML
+    parsed_yaml <- tryCatch({
+      yaml.load(frontmatter)
+    }, error = function(e) {
+      updateLog("Error parsing YAML frontmatter.")
+      return(NULL)
+    })
+    
+    # Ensure parsed YAML is valid
+    if (!is.null(parsed_yaml)) {
+      
+      # Check for missing output keys and add defaults if needed
+      if (is.null(parsed_yaml$output)) {
+        parsed_yaml$output <- list()  # Initialize output if missing
+      }
+      
+      ### Beamer presentation ###
+      # If Beamer theme is "default", use simple atomic format
+      if (input$theme_beamer == "default") {
+        parsed_yaml$output$beamer_presentation <- "default"
+      } else {
+        # If a specific theme is selected, use the list format
+        if (!is.list(parsed_yaml$output$beamer_presentation)) {
+          parsed_yaml$output$beamer_presentation <- list()
+        }
+        # Update Beamer theme and color theme
+        parsed_yaml$output$beamer_presentation$theme <- input$theme_beamer
+        parsed_yaml$output$beamer_presentation$color_theme <- input$color_beamer
+      }
+      
+      ### PDF Document ###
+      # If PDF theme is "default", use simple atomic format
+      if (input$theme_pdf == "default") {
+        parsed_yaml$output$pdf_document <- "default"
+      } else {
+        if (!is.list(parsed_yaml$output$pdf_document)) {
+          parsed_yaml$output$pdf_document <- list()
+        }
+        # Update PDF theme
+        parsed_yaml$output$pdf_document$theme <- input$theme_pdf
+      }
+      
+      ### HTML (ioslides) presentation ###
+      # If HTML theme is "default", use simple atomic format
+      if (input$theme_html == "default") {
+        parsed_yaml$output$ioslides_presentation <- "default"
+      } else {
+        if (!is.list(parsed_yaml$output$ioslides_presentation)) {
+          parsed_yaml$output$ioslides_presentation <- list()
+        }
+        # Update HTML theme
+        parsed_yaml$output$ioslides_presentation$theme <- input$theme_html
+      }
+      
+      ### Word Document ###
+      # If Word theme is "default", use simple atomic format
+      if (input$theme_word == "default") {
+        parsed_yaml$output$word_document <- "default"
+      } else {
+        if (!is.list(parsed_yaml$output$word_document)) {
+          parsed_yaml$output$word_document <- list()
+        }
+        # Update Word theme
+        parsed_yaml$output$word_document$theme <- input$theme_word
+      }
+      
+      # Convert updated YAML back to string
+      new_frontmatter <- as.yaml(parsed_yaml)
+      updateAceEditor(session, "frontmatterEditor", value = new_frontmatter)
+    }
+  }
+  
+  
+  
+  
   # Variable to store the updated Rmd content
   updated_rmd <- reactiveVal(NULL)
   
@@ -98,19 +199,19 @@ server <- function(input, output, session) {
     if (!is.null(parsed_yaml) && !is.null(parsed_yaml$output)) {
       output_settings <- parsed_yaml$output
       if (!is.null(output_settings$beamer_presentation)) {
-        updateSelectInput(session, "theme_beamer", selected = "default")
+        updateSelectInput(session, "theme_beamer", selected = output_settings$beamer_presentation)
         updateCheckboxGroupInput(session, "formats", selected = c("beamer"))
       }
       if (!is.null(output_settings$pdf_document)) {
-        updateSelectInput(session, "theme_pdf", selected = "default")
+        updateSelectInput(session, "theme_pdf", selected = output_settings$pdf_document)
         updateCheckboxGroupInput(session, "formats", selected = c("knitr"))
       }
       if (!is.null(output_settings$ioslides_presentation)) {
-        updateSelectInput(session, "theme_html", selected = "default")
+        updateSelectInput(session, "theme_html", selected = output_settings$ioslides_presentation)
         updateCheckboxGroupInput(session, "formats", selected = c("html"))
       }
       if (!is.null(output_settings$word_document)) {
-        updateSelectInput(session, "theme_word", selected = "default")
+        updateSelectInput(session, "theme_word", selected = output_settings$word_document)
         updateCheckboxGroupInput(session, "formats", selected = c("word"))
       }
     }
@@ -122,6 +223,13 @@ server <- function(input, output, session) {
     # Store the updated Rmd content for further use
     updated_rmd(rmd_content)
   })
+  
+  # Listen to theme changes and update frontmatter
+  observeEvent(input$theme_beamer, { updateFrontmatter() })
+  observeEvent(input$color_beamer, { updateFrontmatter() })
+  observeEvent(input$theme_pdf, { updateFrontmatter() })
+  observeEvent(input$theme_html, { updateFrontmatter() })
+  observeEvent(input$theme_word, { updateFrontmatter() })
   
   # Capture content updates from the frontmatter and body editors
   observe({
@@ -146,11 +254,27 @@ server <- function(input, output, session) {
     
     # Save the updated content to a temporary file for conversion
     temp_rmd <- tempfile(fileext = ".Rmd")
-    writeLines(updated_rmd(), temp_rmd)
+    updateLog(paste("Temporary Rmd file path:", temp_rmd))
+    
+    # Write the content to the temporary file
+    tryCatch({
+      writeLines(updated_rmd(), temp_rmd)
+    }, error = function(e) {
+      updateLog(paste("Error writing temporary Rmd file:", e$message))
+      return(NULL)
+    })
+    
+    # Check if the file was written successfully
+    if (!file.exists(temp_rmd)) {
+      updateLog("Error: Temporary Rmd file does not exist.")
+      output$status <- renderText("Error: Unable to create the temporary Rmd file.")
+      return()
+    }
     
     formats <- input$formats
     temp_dir <- tempfile()  # Create a temporary directory for the converted files
     dir_create(temp_dir)    # Ensure the directory exists
+    updateLog(paste("Temporary output directory:", temp_dir))
     
     # Basic error handling and user feedback
     if (length(formats) == 0) {
@@ -173,7 +297,7 @@ server <- function(input, output, session) {
       tryCatch({
         updateLog("Rendering Beamer presentation...")
         output_file_beamer <- rmarkdown::render(temp_rmd, 
-                                                output_format = beamer_presentation(theme = input$theme_beamer, font_size = input$fontsize, keep_tex = TRUE),
+                                                output_format = beamer_presentation(theme = input$theme_beamer, color_theme = input$color_beamer, font_size = input$fontsize, keep_tex = TRUE),
                                                 output_dir = temp_dir)  # Save directly to the temp directory
         output_files$beamer <- output_file_beamer
         updateLog(paste("Beamer file generated:", output_file_beamer))
@@ -252,6 +376,7 @@ server <- function(input, output, session) {
       output$status <- renderText("No valid files were generated. Please try again.")
     }
   })
+  
 }
 
 shinyApp(ui = ui, server = server)
