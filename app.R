@@ -72,10 +72,16 @@ ui <- fluidPage(
       wellPanel(
         # Beamer theme selection with color themes, slide themes, and font themes
         selectInput("theme_beamer", "Beamer Theme", 
-                    choices = c("default", "AnnArbor", "Antibes", "Bergen", "Berkeley", "Berlin")),
+                    choices = c("default", "AnnArbor", "Antibes", "Bergen", "Berkeley", "Berlin", 
+                                "Boadilla", "CambridgeUS", "Copenhagen", "Darmstadt", "Dresden", 
+                                "Frankfurt", "Goettingen", "Hannover", "Ilmenau", "JuanLesPins", 
+                                "Luebeck", "Madrid", "Malmoe", "Marburg", "Montpellier", 
+                                "PaloAlto", "Pittsburgh", "Rochester", "Singapore", "Szeged", 
+                                "Warsaw")),
         
         selectInput("color_beamer", "Beamer Color Theme",
-                    choices = c("default", "albatross", "beetle", "crane", "dolphin")),
+                    choices = c("default", "albatross", "beetle", "crane", "dolphin", "fly", 
+                                "seagull", "whale", "wolverine")),
         
         numericInput("slide_level", "Slide Level", value = 2, min = 1),
         
