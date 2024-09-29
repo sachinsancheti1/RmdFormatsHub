@@ -87,9 +87,9 @@ ui <- fluidPage(
       selectInput("theme_pdf", "PDF Theme", 
                   choices = c("default", "article", "report", "book", "memoir")),
       
-      # HTML theme selection
+      # HTML theme selection (fixed parentheses)
       selectInput("theme_html", "HTML Theme", 
-                  choices = c("default"),
+                  choices = c("default")),
       
       # Word theme selection
       selectInput("theme_word", "Word Theme", 
@@ -134,9 +134,7 @@ server <- function(input, output, session) {
     shinyjs::html(id = "consoleLog", html = paste0(message, "\n"), add = TRUE)
   }
   
-  # Function to update the frontmatter
-  # Function to update the frontmatter, ensuring all themes are present
-  # Function to update the frontmatter, ensuring all themes are present
+  # Function to update the frontmatter, ensuring all themes are present and correctly formatted
   # Function to update the frontmatter, ensuring all themes are present and correctly formatted
   updateFrontmatter <- function() {
     frontmatter <- input$frontmatterEditor
