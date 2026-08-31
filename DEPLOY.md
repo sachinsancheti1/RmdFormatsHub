@@ -21,11 +21,18 @@ Changing a variable triggers Railway to redeploy the current image automatically
 
 ## Deploying / redeploying
 
+Railway is connected to this GitHub repo (`sachinsancheti1/RmdFormatsHub`, `main` branch) and auto-deploys on every push — no manual step needed for normal changes. Check the current state with:
+
+```
+railway status            # current deployment state and public URL
+```
+
+For a one-off deploy from local uncommitted changes (bypassing GitHub), or to reconnect the CLI to the project on a new machine:
+
 ```
 railway login          # one-time
 railway link            # one-time, if not already linked in this directory
-railway up               # builds from the Dockerfile and deploys
-railway status            # current deployment state and public URL
+railway up               # builds from the local working directory and deploys
 ```
 
 ## Debugging inside the live container
