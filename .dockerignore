@@ -1,0 +1,7 @@
+renv/
+.Rproj.user/
+.git/
+*.Rproj
+.Rhistory
+.RData
+test_rmd_file.Rmd

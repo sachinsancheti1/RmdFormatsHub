@@ -70,6 +70,10 @@ install.packages(c("shiny", "rmarkdown", "shinyAce", "shinyjs", "zip", "fs", "ya
 4. Click **Convert** to generate the files.
 5. Download the converted files as a zip package.
 
+### Deployment
+
+The app is deployed as a Docker container on [Railway](https://railway.com), behind an nginx reverse proxy that gates it with HTTP Basic Auth. See [DEPLOY.md](DEPLOY.md) for setup details, operating commands, and the non-obvious issues (missing system libraries, TinyTeX/CTAN quirks) hit while getting Beamer/PDF rendering working in the container.
+
 ### Contributing
 
 Contributions are welcome! If you'd like to contribute, please follow these steps:
