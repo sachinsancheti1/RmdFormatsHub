@@ -2,6 +2,13 @@ library(shiny)
 # Set CRAN mirror
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
+# Default Shiny upload cap is 5MB; an .Rmd with embedded images/data can
+# exceed that. Matches nginx's client_max_body_size (200M) in
+# nginx.conf.template - nginx's own default (1MB) sits in front of this
+# and would 413 anything larger before Shiny ever saw it, so both had to
+# move together.
+options(shiny.maxRequestSize = 200 * 1024^2)
+
 # List of required libraries
 required_packages <- c("rmarkdown", "shinyAce", "shinyjs", "zip", "fs", "yaml")
 
