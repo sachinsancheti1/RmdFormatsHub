@@ -45,14 +45,27 @@ render_one_format <- function(fmt, input_rmd, out_dir, beamer_theme, beamer_colo
                                pdf_documentclass = "default") {
   base <- tools::file_path_sans_ext(basename(input_rmd))
   switch(fmt,
-    "beamer" = rmarkdown::render(
-      input = input_rmd,
-      output_format = beamer_presentation(
-        theme = beamer_theme, colortheme = beamer_color,
-        slide_level = beamer_slide_level, fonttheme = beamer_font
-      ),
-      output_file = file.path(out_dir, paste0("output_beamer_", base, ".pdf"))
-    ),
+    "beamer" = {
+      # pandoc's own --slide-level validation (0-6) already rejects a bad
+      # value cleanly rather than producing bad output - but its error
+      # ("Argument of --slide-level must be a number between 0 and 6",
+      # surfacing as a generic "pandoc document conversion failed with
+      # error 6") isn't a message a non-technical user would recognize as
+      # "fix the Slide Level field." Confirmed locally: NA/negative values
+      # both hit this. Checked explicitly for a clearer message.
+      sl <- suppressWarnings(as.numeric(beamer_slide_level))
+      if (!is.finite(sl) || sl < 0 || sl > 6) {
+        stop("Enter a slide level between 0 and 6.")
+      }
+      rmarkdown::render(
+        input = input_rmd,
+        output_format = beamer_presentation(
+          theme = beamer_theme, colortheme = beamer_color,
+          slide_level = sl, fonttheme = beamer_font
+        ),
+        output_file = file.path(out_dir, paste0("output_beamer_", base, ".pdf"))
+      )
+    },
     "knitr" = rmarkdown::render(
       input = input_rmd,
       output_format = pdf_document(
