@@ -41,7 +41,7 @@ RUN for i in 1 2 3 4 5; do \
     kpsewhich beamer.cls && kpsewhich translator.sty
 
 WORKDIR /app
-COPY app.R .
+COPY app.R rmd_core.R .
 
 # nginx sits in front and is the only process bound to Railway's public
 # $PORT; it enforces HTTP Basic Auth (credentials from env vars, hashed into
