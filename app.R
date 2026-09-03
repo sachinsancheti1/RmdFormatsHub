@@ -86,66 +86,160 @@ disconnect_overlay <- function() {
   )
 }
 
+# Visual styling pulled from the Vitrag (vitrag-6) design system - navy +
+# teal palette, sharp/square corners (radius 0 throughout, not rounded),
+# uppercase tracking-wide labels/buttons, Source Sans Pro. Layered on top of
+# Shiny's default Bootstrap 3 via a plain CSS override block rather than a
+# Shiny theming package, since only the visual language (not the
+# React/Tailwind component structure) is being reused here. Font sizes were
+# audited against vitrag-6's actual globals.css after an initial pass ran
+# too small (13px tabs/12px labels vs. vitrag's real 14px minimums) - kept
+# identical across every app's ui.R from here on, copy verbatim. Replaces
+# this app's earlier one-off peach/green theme.
+vitrag_theme <- function() {
+  tagList(
+    tags$head(
+      tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap"),
+      tags$style(HTML("
+        :root {
+          --vblue: #384764;
+          --vgreen: #00a99e;
+          --vgreen-dark: #00786f;
+          --vorange: #ff7824;
+          --vsection: #f2f5f9;
+        }
+        body {
+          font-family: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif;
+          color: var(--vblue);
+          background: #ffffff;
+          font-size: 15px;
+        }
+        /* Bootstrap's default <small>/.help-block shrink to ~85% of a
+           14px base (~12px) reads as genuinely too small once the base
+           itself is 15px - fixed to a real, comfortable size instead of
+           a relative shrink. */
+        small, .help-block {
+          font-size: 13px;
+        }
+        h1, h2, h3, h4, h5, legend {
+          font-family: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif;
+          color: var(--vblue);
+          font-weight: 600;
+        }
+        .container-fluid > h1:first-child {
+          padding: 18px 0 8px;
+          border-bottom: 3px solid var(--vgreen);
+          margin-bottom: 4px;
+        }
+        a { color: var(--vblue); }
+        a:hover { color: var(--vgreen-dark); }
+
+        /* Tabs: bold uppercase labels, teal underline on the active tab -
+           matches vitrag's .nav-link underline-indicator pattern. */
+        .nav-tabs { border-bottom: 2px solid var(--vsection); }
+        .nav-tabs > li > a {
+          font-family: 'Source Sans 3', sans-serif;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          font-size: 15px;
+          padding: 12px 18px;
+          color: var(--vblue);
+          border-radius: 0;
+          border: none;
+          background: transparent;
+        }
+        .nav-tabs > li.active > a,
+        .nav-tabs > li.active > a:hover,
+        .nav-tabs > li.active > a:focus {
+          color: var(--vblue);
+          background: transparent;
+          border: none;
+          border-bottom: 3px solid var(--vgreen);
+        }
+        .nav-tabs > li > a:hover {
+          background: var(--vsection);
+          border: none;
+          border-bottom: 3px solid var(--vgreen);
+        }
+
+        /* Sidebar: light section background, sharp corners, no shadow. */
+        .well {
+          background: var(--vsection);
+          border: none;
+          border-radius: 0;
+          box-shadow: none;
+        }
+
+        /* Form fields: sharp corners, uppercase tracking-wide labels, teal focus ring. */
+        label {
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          font-size: 14px;
+          color: var(--vblue);
+        }
+        .form-control {
+          border-radius: 0;
+          border: 1px solid #c7ccd6;
+          font-size: 15px;
+          height: auto;
+          padding: 8px 12px;
+        }
+        .form-control:focus {
+          border-color: var(--vgreen);
+          box-shadow: 0 0 0 1px var(--vgreen);
+        }
+
+        /* Buttons: sharp corners, bold uppercase, navy fill / teal hover -
+           matches vitrag's .btn-vitrag. */
+        .btn, .btn-default, .btn-primary {
+          border-radius: 0;
+          border: 2px solid var(--vblue);
+          background: var(--vblue);
+          color: #ffffff;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          font-size: 15px;
+          padding: 10px 24px;
+          transition: all 0.15s ease;
+        }
+        .btn:hover, .btn-default:hover, .btn-primary:hover {
+          background: var(--vgreen-dark);
+          border-color: var(--vgreen-dark);
+          color: #ffffff;
+        }
+        /* Positive/add actions get the teal instead of navy - still
+           sharp-cornered/uppercase/bold like every other button. */
+        .btn-success {
+          border-radius: 0;
+          border: 2px solid var(--vgreen-dark);
+          background: var(--vgreen-dark);
+          color: #ffffff;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          font-size: 15px;
+          padding: 10px 24px;
+          transition: all 0.15s ease;
+        }
+        .btn-success:hover {
+          background: var(--vblue);
+          border-color: var(--vblue);
+          color: #ffffff;
+        }
+
+        /* Radio/checkbox accent color. */
+        input[type='radio'], input[type='checkbox'] { accent-color: var(--vgreen); }
+      "))
+    )
+  )
+}
+
 ui <- fluidPage(
   disconnect_overlay(),
-  tags$head(
-    # Include Google Fonts and custom CSS
-    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap"),
-
-    # Inline CSS for customizing the UI appearance
-    tags$style(
-      HTML(
-        "
-      body {
-        font-family: 'Noto Sans', sans-serif;
-        background-color: #f9f3eb; /* light peach shade */
-        color: #4d4d4d;
-      }
-      h1, h4 {
-        color: #4d4d4d;
-      }
-      #file {
-        margin-top: 15px;
-      }
-      .shiny-input-container {
-        margin-bottom: 20px;
-      }
-      .form-group {
-        margin-bottom: 15px;
-      }
-      #convert {
-        background-color: #e89f71; /* peach shade */
-        border: none;
-        color: white;
-        padding: 10px 20px;
-        font-size: 16px;
-        font-weight: bold;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-      }
-      #convert:hover {
-        background-color: #d88b5f; /* darker peach */
-      }
-      .btn {
-        border-radius: 8px;
-        background-color: #8fbc8f; /* light green */
-        color: white;
-        padding: 8px 15px;
-        font-weight: bold;
-        transition: background-color 0.3s ease;
-      }
-      .btn:hover {
-        background-color: #7aa87a; /* darker green */
-      }
-      .well {
-        background-color: #e3f1e1; /* light green shade */
-        border: 1px solid #c7e1c7;
-      }
-    "
-      )
-    )
-  ),
+  vitrag_theme(),
   useShinyjs(),
   titlePanel("R Markdown to Multiple Formats"),
   sidebarLayout(
