@@ -25,6 +25,13 @@ install_if_missing <- function(packages) {
 # Install and load required packages
 install_if_missing(required_packages)
 
+# The actual per-format rendering (render_one_format/op_convert) lives in
+# rmd_core.R, not duplicated here - it's also directly runnable as a CLI
+# (`Rscript rmd_core.R convert ...`) for a file too large/sensitive to
+# upload, or to debug a render failure locally with a real R console
+# instead of just what the on-page console log shows. See README.
+source("rmd_core.R")
+
 # Shows a clear, unmissable "please refresh" banner when the Shiny session
 # disconnects (server restart, crash, idle timeout, etc.). Shiny's own
 # default disconnect behavior is just a subtle page-dimming effect - easy to
@@ -433,16 +440,21 @@ server <- function(input, output, session) {
       }
 
       ### PDF Document ###
-      # If PDF theme is "default", use simple atomic format
-      if (input$theme_pdf == "default") {
-        parsed_yaml$output$pdf_document <- "default"
-      } else {
-        if (!is.list(parsed_yaml$output$pdf_document)) {
-          parsed_yaml$output$pdf_document <- list()
-        }
-        # Update PDF theme
-        parsed_yaml$output$pdf_document$theme <- input$theme_pdf
-      }
+      # pdf_document has no "theme" argument at all (the old
+      # output$pdf_document$theme <- input$theme_pdf here rendered "unused
+      # argument (theme = ...)" and silently dropped the PDF output for
+      # any non-default choice, confirmed locally). The UI's choices
+      # (article/report/book/memoir) are LaTeX document classes, which
+      # would need the top-level "documentclass" YAML key - but that key
+      # is document-wide, not scoped to pdf_document, and writing it here
+      # would break a Beamer render sharing this same frontmatter (its
+      # own \documentclass{beamer} gets silently overridden, confirmed
+      # locally: "! Undefined control sequence" from \begin{frame} etc).
+      # So the PDF document class is applied only at conversion time
+      # (input$theme_pdf passed straight to op_convert()'s
+      # pdf_documentclass, scoped to just that render call), never
+      # written into this shared frontmatter.
+      parsed_yaml$output$pdf_document <- "default"
 
       ### HTML (ioslides) presentation ###
       # If HTML theme is "default", use simple atomic format
@@ -623,108 +635,23 @@ server <- function(input, output, session) {
 
     output$status <- renderText("Converting...")
 
-    output_files <- list()  # Initialize list for storing file paths
-
-    # Convert to Beamer Presentation with theme, colortheme, slidetheme, and fonttheme
-    if ("beamer" %in% formats) {
-      tryCatch({
-        updateLog("Rendering Beamer presentation...")
-        output_file_beamer <- rmarkdown::render(
-          input = temp_rmd,
-          output_format = beamer_presentation(
-            theme = input$theme_beamer,
-            colortheme = input$color_beamer,
-            slide_level = input$slide_level,
-            fonttheme = input$font_beamer
-          ),
-          output_file = file.path(
-            temp_dir,
-            paste0(
-              "output_beamer_",
-              tools::file_path_sans_ext(basename(temp_rmd)),
-              ".pdf"
-            )
-          )
-        )
-        output_files$beamer <- output_file_beamer
-        updateLog(paste("Beamer file generated:", output_file_beamer))
-      }, error = function(e) {
-        updateLog(paste("Error converting to Beamer:", e$message))
-      })
-    }
-
-    # Convert to Knitr PDF
-    if ("knitr" %in% formats) {
-      tryCatch({
-        updateLog("Rendering Knitr PDF...")
-        output_file_knitr <- rmarkdown::render(
-          input = temp_rmd,
-          output_format = "pdf_document",
-          output_file = file.path(
-            temp_dir,
-            paste0(
-              "output_knitr_",
-              tools::file_path_sans_ext(basename(temp_rmd)),
-              ".pdf"
-            )
-          )
-        )
-        output_files$knitr <- output_file_knitr
-        updateLog(paste("Knitr PDF file generated:", output_file_knitr))
-      }, error = function(e) {
-        updateLog(paste("Error converting to Knitr PDF:", e$message))
-      })
-    }
-
-    # Convert to R HTML presentation (ioslides)
-    if ("html" %in% formats) {
-      tryCatch({
-        updateLog("Rendering HTML presentation...")
-        output_file_html <- rmarkdown::render(
-          input = temp_rmd,
-          output_format = "ioslides_presentation",
-          output_file = file.path(
-            temp_dir,
-            paste0(
-              "output_html_",
-              tools::file_path_sans_ext(basename(temp_rmd)),
-              ".html"
-            )
-          )
-        )
-        output_files$html <- output_file_html
-        updateLog(paste("HTML file generated:", output_file_html))
-      }, error = function(e) {
-        updateLog(paste("Error converting to HTML:", e$message))
-      })
-    }
-
-    # Convert to Word Document
-    if ("word" %in% formats) {
-      tryCatch({
-        updateLog("Rendering Word document...")
-        output_file_word <- rmarkdown::render(
-          input = temp_rmd,
-          output_format = "word_document",
-          output_file = file.path(
-            temp_dir,
-            paste0(
-              "output_word_",
-              tools::file_path_sans_ext(basename(temp_rmd)),
-              ".docx"
-            )
-          )
-        )
-        output_files$word <- output_file_word
-        updateLog(paste("Word document generated:", output_file_word))
-      }, error = function(e) {
-        updateLog(paste("Error converting to Word Document:", e$message))
-      })
-    }
-
-    # Ensure files exist before attempting to zip
-    valid_files <- unlist(output_files)
-    valid_files <- valid_files[file.exists(valid_files)]  # Only include files that exist
+    # Per-format rendering (render_one_format/op_convert, sourced from
+    # rmd_core.R) - a single format failing doesn't abort the others, each
+    # is tried/logged independently, same as before this was consolidated.
+    valid_files <- tryCatch({
+      op_convert(
+        temp_rmd, formats, temp_dir,
+        beamer_theme = input$theme_beamer,
+        beamer_color = input$color_beamer,
+        beamer_slide_level = input$slide_level,
+        beamer_font = input$font_beamer,
+        pdf_documentclass = input$theme_pdf,
+        log = updateLog
+      )
+    }, error = function(e) {
+      updateLog(paste("Error:", conditionMessage(e)))
+      character(0)
+    })
 
     if (length(valid_files) > 0) {
       # Copy files to a flat temporary directory for zipping

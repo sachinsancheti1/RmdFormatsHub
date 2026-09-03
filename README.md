@@ -70,9 +70,23 @@ install.packages(c("shiny", "rmarkdown", "shinyAce", "shinyjs", "zip", "fs", "ya
 4. Click **Convert** to generate the files.
 5. Download the converted files as a zip package.
 
+### Local fallback CLI
+
+The actual per-format rendering (`render_one_format`/`op_convert`) lives in `rmd_core.R`, sourced by `app.R` rather than duplicated inline. It's also directly runnable, for a `.Rmd` too large/sensitive to upload, or to debug a render failure with a real R console instead of just the on-page log:
+
+```bash
+Rscript rmd_core.R convert in.Rmd out.zip --formats beamer,knitr,html,word \
+  --beamer-theme Madrid --beamer-color whale --beamer-slide-level 2 --beamer-font default \
+  --pdf-documentclass report
+```
+
+`--formats` is required (comma-separated: `beamer`, `knitr`, `html`, `word`). The Beamer flags and `--pdf-documentclass` are optional (default `default`); `html`/`word` read their theme from the `.Rmd`'s own YAML frontmatter, same as the app's Convert button.
+
+A real bug was caught while building this: the "PDF Theme" dropdown (article/report/book/memoir) wrote `output: pdf_document: theme: ...` into the frontmatter, but `pdf_document` has no `theme` argument at all - selecting anything but "default" silently dropped the PDF output (`unused argument (theme = ...)`, swallowed by the per-format try/catch). Those choices are actually LaTeX document classes, set via the top-level `documentclass` YAML key - but that key is document-wide, so writing it into the shared frontmatter also broke a Beamer conversion in the same batch (its `\documentclass{beamer}` got silently overridden, producing "Undefined control sequence" from every `\begin{frame}`). Fixed by applying `--pdf-documentclass` only as a `pandoc_args` override scoped to the PDF render call itself, never written into the shared `.Rmd`. Verified locally: all 4 formats together, with a non-default Beamer theme *and* a non-default PDF document class at the same time, both via the CLI and end-to-end through the live UI (Playwright).
+
 ### Deployment
 
-The app is deployed as a Docker container on [Railway](https://railway.com), behind an nginx reverse proxy that gates it with HTTP Basic Auth. See [DEPLOY.md](DEPLOY.md) for setup details, operating commands, and the non-obvious issues (missing system libraries, TinyTeX/CTAN quirks) hit while getting Beamer/PDF rendering working in the container.
+The app is deployed as a Docker container on [Railway](https://railway.com), behind an nginx reverse proxy that gates it with HTTP Basic Auth. See [DEPLOY.md](DEPLOY.md) for setup details, operating commands, and the non-obvious issues (missing system libraries, TinyTeX/CTAN quirks) hit while getting Beamer/PDF rendering working in the container. Upload cap is 200MB (`shiny.maxRequestSize` in `app.R`, matched by `client_max_body_size 200M` in `nginx.conf.template` - nginx's own default of 1MB sits in front of Shiny and silently 413s anything larger unless both are raised together).
 
 ### Contributing
 
