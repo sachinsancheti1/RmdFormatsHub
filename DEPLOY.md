@@ -21,7 +21,7 @@ Changing a variable triggers Railway to redeploy the current image automatically
 
 ## Deploying / redeploying
 
-Railway is connected to this GitHub repo (`sachinsancheti1/RmdFormatsHub`, `main` branch) and auto-deploys on every push — no manual step needed for normal changes. Check the current state with:
+Railway is connected to this GitHub repo (`sachinsancheti1/r-rmd-converter`, renamed from `RmdFormatsHub` - Railway tracks the repo by ID, so the rename didn't break the connection - `main` branch) and auto-deploys on every push — no manual step needed for normal changes. Check the current state with:
 
 ```
 railway status            # current deployment state and public URL

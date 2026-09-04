@@ -1,6 +1,8 @@
-# RmdFormatsHub
+# r-rmd-converter
 
-RmdFormatsHub is a Shiny app that allows users to convert R Markdown (.Rmd) files into multiple formats with customizable themes and advanced options. It supports formats like Beamer presentations, PDF documents, HTML slides, and Word documents, all while providing flexibility to adjust themes and other document-specific settings.
+(Renamed from `RmdFormatsHub` - matching this developer's other apps' `r-xxx-yyy` naming convention. The Railway service/deployed URL is still named `rmdformatshub`; only the GitHub repo and local folder were renamed.)
+
+A Shiny app that converts R Markdown (.Rmd) files into multiple formats with customizable themes and advanced options: Beamer presentations, Knitr PDFs, HTML slides (ioslides), and Word documents, all while providing flexibility to adjust themes and other document-specific settings.
 
 ## Features
 
@@ -47,13 +49,13 @@ install.packages(c("shiny", "rmarkdown", "shinyAce", "shinyjs", "zip", "fs", "ya
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/sachinsancheti1/RmdFormatsHub.git
+   git clone https://github.com/sachinsancheti1/r-rmd-converter.git
    ```
 
 2. Navigate to the project directory:
 
    ```bash
-   cd RmdFormatsHub
+   cd r-rmd-converter
    ```
 
 3. Open the project in RStudio or launch it directly from the R console:
@@ -100,7 +102,7 @@ Contributions are welcome! If you'd like to contribute, please follow these step
 
 ### Issues
 
-If you encounter any problems using RmdFormatsHub, please [create an issue](https://github.com/sachinsancheti1/RmdFormatsHub/issues).
+If you encounter any problems, please [create an issue](https://github.com/sachinsancheti1/r-rmd-converter/issues).
 
 ### License
 
